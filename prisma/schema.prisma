@@ -1,15 +1,70 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+//
+// TABLAS DE APOYO
+//
+model UserRole {
+  id    Int    @id @default(autoincrement())
+  name  String @unique // CLIENT, DJ, ADMIN, etc.
+  users User[]
+}
+
+model RequestStatus {
+  id    Int    @id @default(autoincrement())
+  name  String @unique // PENDING, ACCEPTED, REJECTED, PLAYING, COMPLETED
+  requests Request[]
+}
+
+//
+// USUARIOS
+//
+model User {
+  id         String      @id @default(uuid())
+  name       String
+  email      String?     @unique
+  roleId     Int
+  createdAt  DateTime    @default(now())
+
+  // relaciones
+  role            UserRole       @relation(fields: [roleId], references: [id])
+  sentRequests    Request[]      @relation("UserRequests")
+  handledRequests Request[]      @relation("DJRequests")
+}
+
+//
+// SOLICITUDES DE CANCIONES
+//
+model Request {
+  id           String         @id @default(uuid())
+
+  //  Info de la canción (extraída de la API de Spotify)
+  songTitle    String
+  artistName   String
+  albumName    String?
+  spotifyId    String?        @unique
+  coverUrl     String?        // imagen del álbum
+  previewUrl   String?        // URL de muestra de 30 segundos (opcional)
+  
+  //  Mensaje personalizado del usuario (opcional)
+  message      String?
+
+  //  Estado de la solicitud
+  statusId     Int
+  status       RequestStatus  @relation(fields: [statusId], references: [id])
+
+  //  Relaciones
+  userId       String
+  user         User           @relation("UserRequests", fields: [userId], references: [id])
+
+  djId         String?
+  dj           User?          @relation("DJRequests", fields: [djId], references: [id])
+
+  createdAt    DateTime       @default(now())
 }
